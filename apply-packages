@@ -1,0 +1,57 @@
+#!/bin/bash
+
+# ----------------------------------------------------------------
+# Read in the config file
+
+source settings.cfg
+
+echo -e "Local AEM instance:\n  Host: $LOCAL_HOST\n  Port: $LOCAL_PORT\n"
+
+PACKAGES_FILE=packages.cfg
+
+# ----------------------------------------------------------------
+# The heavy lifting
+while IFS='' read -r line || [[ -n "$line" ]]; do
+
+    # Skip if the line is a comment
+    if [[ $line == \#* ]]|| [[ $line == "" ]]; then
+        continue
+    fi
+
+    if [[ $line == "restart" ]]; then
+        echo "Restart manually, then press ENTER"
+        read PRESSED <&2
+        continue
+    fi
+
+    # split the string on "/"
+    arrLine=(${line//// })
+    FOLDER=${arrLine[0]}
+    ZIP=${arrLine[1]}
+
+    FILE=$PACKAGES_ROOT/$FOLDER/$ZIP
+    if [[ ! -f $FILE ]]; then
+        echo "Skipping, file not found: $FILE"
+        continue
+    fi
+
+    echo "Checking if package is already deployed"
+    OUTPUT_EXISTS=$(curl --silent -u $LOCAL_ADMIN_USER:$LOCAL_ADMIN_PASS http://localhost:4504/crx/packmgr/service.jsp?cmd=ls | grep downloadName | grep -i $ZIP)
+    if [[ ! "$OUTPUT_EXISTS" == "" ]]; then
+        echo " - package $ZIP found on instance, skipping"
+        continue
+    fi
+
+    echo "Installing package $FILE on Local AEM..."
+    OUTPUT=$(curl --silent -u $LOCAL_ADMIN_USER:$LOCAL_ADMIN_PASS -F file=@"$FILE" -F name="$ZIP" -F force=true -F install=true http://$LOCAL_HOST:$LOCAL_PORT/crx/packmgr/service.jsp)
+    if [[ $OUTPUT == *"<status code=\"200\">ok</status>"* ]]
+    then
+        echo -e "... success! 30 Sec nap...";
+        sleep 30s
+    else
+        echo -e "... failed! Exiting...";
+        echo -e "Got response: $OUTPUT"
+        break # get outta here!
+    fi
+
+done < "$PACKAGES_FILE"
