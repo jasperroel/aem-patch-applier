@@ -36,7 +36,7 @@ while IFS='' read -r line || [[ -n "$line" ]]; do
     fi
 
     echo "Checking if package is already deployed"
-    OUTPUT_EXISTS=$(curl --silent -u $LOCAL_ADMIN_USER:$LOCAL_ADMIN_PASS http://localhost:4504/crx/packmgr/service.jsp?cmd=ls | grep downloadName | grep -i $ZIP)
+    OUTPUT_EXISTS=$(curl --silent -u $LOCAL_ADMIN_USER:$LOCAL_ADMIN_PASS http://$LOCAL_HOST:$LOCAL_PORT/crx/packmgr/service.jsp?cmd=ls | grep downloadName | grep -i $ZIP)
     if [[ ! "$OUTPUT_EXISTS" == "" ]]; then
         echo " - package $ZIP found on instance, skipping"
         continue
